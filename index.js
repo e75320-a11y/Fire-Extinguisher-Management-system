@@ -21,7 +21,9 @@ function isActive(ext) {
 }
 
 function monthOf(insp) {
-  return fmt(insp.month) || fmt(insp.inspected_at).slice(0, 7);
+  // month 값이 "2026-11" 또는 날짜변환된 "2026-11-01" 등 어떤 형태여도 YYYY-MM으로 정규화
+  const raw = fmt(insp.month) || fmt(insp.inspected_at);
+  return raw.slice(0, 7);
 }
 
 function toast(msg, isError = false) {
