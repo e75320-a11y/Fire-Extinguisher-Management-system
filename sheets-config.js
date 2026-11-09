@@ -4,4 +4,4 @@
 // (Apps Script 배포 후 나오는 /exec 주소)
 // ============================================================================
 export const APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/여기에_배포된_웹앱_URL을_입력/exec';
+  'https://script.google.com/macros/s/AKfycbxTB8Hsh7GPirfrzkPYR3G8HG7fPI03HnT37l7JlX_ZjnPLSZIB7-Gt0L9ANCcTq3aXuQ/exec';
