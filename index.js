@@ -628,6 +628,13 @@ function buildMonthlyPrint() {
       <p class="print-meta">점검 대상 월: ${escapeHtml(month)} &nbsp;·&nbsp; 출력일: ${escapeHtml(today)}</p>
     </div>
     <p class="print-summary">전체 ${m.activeExts.length}대 · 점검완료 ${m.doneCount}대 · 미점검 ${m.missCount}대 · 이상발견 ${m.badCount}대</p>
+    <div class="print-items">
+      <div class="print-items-title">■ 점검 항목</div>
+      <ol class="print-items-list">
+        ${INSPECTION_ITEMS.map((it) => `<li>${escapeHtml(it.label)}</li>`).join('')}
+      </ol>
+      <p class="print-legend">※ 각 항목을 정상 / 이상 / 해당없음으로 점검</p>
+    </div>
     <table class="print-table">
       <thead>
         <tr><th>No</th><th>관리번호</th><th>위치</th><th>형식</th><th>점검상태</th><th>최근점검일</th><th>점검자</th><th>결과</th><th>이상항목</th></tr>
@@ -665,6 +672,10 @@ const MONTHLY_PRINT_CSS = PRINT_BASE_CSS + `
   h1 { font-size:20px; margin:0 0 6px; }
   .print-meta { font-size:12px; margin:0 0 12px; }
   .print-summary { font-size:13px; margin:0 0 10px; }
+  .print-items { margin:0 0 12px; }
+  .print-items-title { font-size:13px; font-weight:700; margin-bottom:6px; }
+  .print-items-list { margin:0; padding-left:20px; font-size:12px; line-height:1.7; display:grid; grid-template-columns:repeat(2,1fr); column-gap:24px; }
+  .print-legend { font-size:11px; color:#555; margin:6px 0 0; }
   .print-table { width:100%; border-collapse:collapse; font-size:12px; }
   .print-table th, .print-table td { border:1px solid #333; padding:6px 8px; text-align:left; }
   .print-table th { background:#f0f0f0; }
