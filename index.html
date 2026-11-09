@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>소화기 점검 관리 시스템</title>
+  <link rel="stylesheet" href="./index.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1 id="siteTitle">소화기 점검 관리 시스템</h1>
+      <p class="subtitle">소화기 관리 · QR 점검 · 월별 현황</p>
+    </div>
+    <div class="topbar-right">
+      <span id="syncStatus" class="sync-status">데이터 로드 중…</span>
+      <a class="btn btn-outline" href="./check.html" target="_blank">📱 모바일 점검 페이지</a>
+      <button class="btn btn-outline" id="reloadBtn" type="button">↻ 새로고침</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="register" type="button">소화기 등록</button>
+    <button class="tab" data-tab="ext" type="button">소화기 현황</button>
+    <button class="tab" data-tab="qr" type="button">QR 생성</button>
+    <button class="tab" data-tab="monthly" type="button">월별 점검현황</button>
+    <button class="tab" data-tab="abnormal" type="button">이상현황</button>
+    <button class="tab" data-tab="settings" type="button">설정</button>
+  </nav>
+
+  <main>
+    <!-- ============ 소화기 등록 ============ -->
+    <section id="tab-register" class="tab-panel active">
+      <div class="panel-head">
+        <h2>소화기 등록</h2>
+        <span class="muted">소화기 1대 = 기록 1개 (관리번호별 QR 1개)</span>
+      </div>
+
+      <form id="extForm" class="card ext-form" autocomplete="off">
+        <input type="hidden" id="extId" />
+        <div class="field">
+          <label for="extLocation">위치(구역)</label>
+          <input id="extLocation" type="text" placeholder="예: 1공장 A라인" required />
+        </div>
+        <div class="field">
+          <label for="extType">형식</label>
+          <select id="extType">
+            <option value="">선택</option>
+            <option value="ABC분말">ABC분말</option>
+            <option value="BC분말">BC분말</option>
+            <option value="CO2">CO2</option>
+            <option value="청정소화약제">청정소화약제</option>
+            <option value="포소화기">포소화기</option>
+            <option value="물소화기">물소화기</option>
+            <option value="__custom__">직접 입력</option>
+          </select>
+          <input id="extTypeCustom" type="text" placeholder="형식을 직접 입력" style="display:none" />
+        </div>
+        <div class="field">
+          <label for="extCapacity">용량</label>
+          <input id="extCapacity" type="text" list="extCapacityList" placeholder="예: 3.3kg" />
+          <datalist id="extCapacityList">
+            <option value="3.3kg"></option>
+            <option value="4.5kg"></option>
+            <option value="6.0kg"></option>
+            <option value="20kg"></option>
+            <option value="2.0L"></option>
+            <option value="3.0L"></option>
+            <option value="9.0L"></option>
+          </datalist>
+        </div>
+        <div class="field">
+          <label for="extMgmtNo">관리번호</label>
+          <input id="extMgmtNo" type="text" placeholder="예: A-001" required />
+        </div>
+        <div class="field">
+          <label for="extInstalled">설치일</label>
+          <input id="extInstalled" type="date" />
+        </div>
+        <div class="field">
+          <label for="extExpiry">사용연한</label>
+          <input id="extExpiry" type="date" />
+        </div>
+        <div class="field field-wide">
+          <label for="extNote">비고</label>
+          <input id="extNote" type="text" placeholder="제조일, 교체 이력 등" />
+        </div>
+        <div class="field field-check">
+          <label><input id="extActive" type="checkbox" checked /> 사용 중</label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">저장</button>
+          <button class="btn" type="button" id="extResetBtn">초기화</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ 소화기 현황 ============ -->
+    <section id="tab-ext" class="tab-panel">
+      <div class="panel-head">
+        <h2>소화기 현황</h2>
+        <span class="muted">등록된 소화기 목록 (수정/삭제 가능)</span>
+      </div>
+
+      <div class="table-wrap card">
+        <table class="data-table" id="extTable">
+          <thead>
+            <tr>
+              <th>관리번호</th><th>위치</th><th>형식</th><th>용량</th><th>설치일</th><th>사용연한</th><th>비고</th><th>상태</th><th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="extTbody"></tbody>
+        </table>
+        <p class="muted" id="extCount"></p>
+      </div>
+    </section>
+
+    <!-- ============ QR 생성 ============ -->
+    <section id="tab-qr" class="tab-panel">
+      <div class="panel-head">
+        <h2>점검용 QR 코드 생성</h2>
+        <span class="muted">QR을 소화기에 부착하고, 폰으로 인식하면 점검 페이지가 열립니다.</span>
+      </div>
+
+      <div class="card qr-controls">
+        <div class="qr-controls-row">
+          <button class="btn" type="button" id="qrSelectAll">전체 선택</button>
+          <button class="btn" type="button" id="qrSelectNone">전체 해제</button>
+          <span class="spacer"></span>
+          <button class="btn btn-primary" type="button" id="qrGenerateSelected">선택 QR 생성</button>
+          <button class="btn btn-primary" type="button" id="qrGenerateAll">전체 QR 생성</button>
+          <button class="btn" type="button" id="qrDownloadAll">⬇ 전체 이미지 다운로드</button>
+          <button class="btn btn-print" type="button" id="qrPrint">🖨 인쇄</button>
+        </div>
+        <p class="muted" id="qrUrlHint">QR에는 설정 탭의 "점검 페이지 URL(check_url_base)" + /check.html?id=관리ID 가 기록됩니다.</p>
+      </div>
+
+      <div class="card">
+        <div class="ext-select-list" id="qrExtList"></div>
+      </div>
+
+      <div id="qrGrid" class="qr-grid"></div>
+    </section>
+
+    <!-- ============ 월별 점검현황 ============ -->
+    <section id="tab-monthly" class="tab-panel">
+      <div class="panel-head">
+        <h2>월별 점검현황</h2>
+        <div class="month-picker">
+          <input type="month" id="monthInput" />
+          <button class="btn" type="button" id="monthlyPrintBtn">🖨 인쇄</button>
+        </div>
+      </div>
+
+      <div class="summary-cards" id="monthlySummary"></div>
+      <p class="muted" id="monthlyHint">목록의 행을 더블클릭하면 점검기록을 수동으로 등록/수정할 수 있습니다. (미점검·이상발견 항목에 유용)</p>
+
+      <div class="table-wrap card">
+        <table class="data-table" id="monthlyTable">
+          <thead>
+            <tr>
+              <th>관리번호</th><th>위치</th><th>형식</th><th>점검상태</th><th>최근점검일</th><th>점검자</th><th>결과</th><th>이상항목</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyTbody"></tbody>
+        </table>
+        <p class="muted" id="monthlyEmpty"></p>
+      </div>
+    </section>
+
+    <!-- ============ 이상현황 ============ -->
+    <section id="tab-abnormal" class="tab-panel">
+      <div class="panel-head">
+        <h2>이상현황</h2>
+        <div class="month-picker">
+          <select id="abnormalMonth"></select>
+        </div>
+      </div>
+
+      <div class="table-wrap card">
+        <table class="data-table" id="abnormalTable">
+          <thead>
+            <tr>
+              <th>점검일시</th><th>관리번호</th><th>위치</th><th>형식</th><th>점검자</th><th>이상항목(상세)</th><th>비고</th>
+            </tr>
+          </thead>
+          <tbody id="abnormalTbody"></tbody>
+        </table>
+        <p class="muted" id="abnormalEmpty"></p>
+      </div>
+    </section>
+
+    <!-- ============ 설정 ============ -->
+    <section id="tab-settings" class="tab-panel">
+      <div class="panel-head">
+        <h2>설정</h2>
+      </div>
+
+      <form id="settingsForm" class="card settings-form" autocomplete="off">
+        <div class="field">
+          <label for="setSiteName">사이트명(화면 제목)</label>
+          <input id="setSiteName" type="text" />
+        </div>
+        <div class="field field-wide">
+          <label for="setCheckUrl">점검 페이지 URL (check_url_base)</label>
+          <input id="setCheckUrl" type="text" placeholder="예: https://계정.github.io/저장소" />
+          <p class="hint">QR 코드에 기록되는 기본 주소입니다. 마지막 슬래시(/)는 빼고 입력하세요.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">저장</button>
+        </div>
+      </form>
+
+      <div class="card info-box">
+        <h3>연동 정보</h3>
+        <p>데이터는 구글 스프레드시트 <b>'소화기점검'</b>에 저장됩니다. 연결 주소는
+          <code>public/sheets-config.js</code> 파일의 <code>APPS_SCRIPT_URL</code>에 입력하세요.
+          (Apps Script 배포 후 나오는 <code>/exec</code> 주소)</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ 월별 점검결과 인쇄 영역 ============ -->
+  <div id="monthlyPrintArea" class="print-area"></div>
+
+  <!-- ============ 점검기록 수동 등록/수정 모달 ============ -->
+  <div id="inspectModal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3>점검기록 수동 등록/수정</h3>
+      <p class="modal-ext" id="modalExtInfo"></p>
+
+      <input type="hidden" id="modalInspId" />
+      <input type="hidden" id="modalExtId" />
+
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label for="modalInspector">점검자</label>
+          <input id="modalInspector" type="text" placeholder="이름 입력" />
+        </div>
+        <div class="modal-field">
+          <label for="modalDatetime">점검일시</label>
+          <input id="modalDatetime" type="datetime-local" />
+        </div>
+      </div>
+
+      <div class="modal-items" id="modalItems"></div>
+
+      <div class="modal-field">
+        <label for="modalNote">비고</label>
+        <textarea id="modalNote" rows="2" placeholder="조치사항, 특이사항 등"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" type="button" id="modalCancelBtn">취소</button>
+        <button class="btn btn-primary" type="button" id="modalSaveBtn">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./vendor/qrcode.min.js"></script>
+  <script src="./vendor/jszip.min.js"></script>
+  <script type="module" src="./index.js"></script>
+</body>
+</html>
