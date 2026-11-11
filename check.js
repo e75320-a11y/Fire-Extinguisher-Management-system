@@ -74,7 +74,15 @@ function renderExtInfo() {
   } else {
     $('extInfo').innerHTML =
       `<span class="mgmt">소화기 정보를 불러오지 못했습니다</span><br>` +
-      `관리ID: ${escapeHtml(currentExtId || '-')} (점검 저장은 가능합니다)`;
+      `관리ID: ${escapeHtml(currentExtId || '-')}` +
+      ` <button type="button" id="extRetryBtn" class="retry-btn">다시 불러오기</button>`;
+    const btn = $('extRetryBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        $('extInfo').innerHTML = '소화기 정보 불러오는 중…';
+        resolveExtinguisher();
+      });
+    }
   }
 }
 
