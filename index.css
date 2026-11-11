@@ -175,6 +175,15 @@ main { padding: 20px; max-width: 1280px; margin: 0 auto; }
 /* ---------- QR ---------- */
 .qr-controls-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .spacer { flex: 1; }
+.qr-per-page { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gray-700); font-weight: 600; }
+.qr-per-page input {
+  width: 60px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 13px;
+  text-align: center;
+}
 
 .ext-select-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; max-height: 300px; overflow-y: auto; }
 .ext-select-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 8px; cursor: pointer; }

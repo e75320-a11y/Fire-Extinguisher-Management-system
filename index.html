@@ -130,6 +130,9 @@
           <button class="btn btn-primary" type="button" id="qrGenerateSelected">선택 QR 생성</button>
           <button class="btn btn-primary" type="button" id="qrGenerateAll">전체 QR 생성</button>
           <button class="btn" type="button" id="qrDownloadAll">⬇ 전체 이미지 다운로드</button>
+          <label class="qr-per-page" for="qrPerPage">
+            한 장당 <input id="qrPerPage" type="number" min="1" max="32" step="1" value="8" /> 개
+          </label>
           <button class="btn btn-print" type="button" id="qrPrint">🖨 인쇄</button>
         </div>
         <p class="muted" id="qrUrlHint">QR에는 설정 탭의 "점검 페이지 URL(check_url_base)" + /check.html?id=관리ID 가 기록됩니다.</p>

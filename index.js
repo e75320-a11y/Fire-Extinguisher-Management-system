@@ -251,7 +251,7 @@ function bindQrControls() {
   $('qrDownloadAll').addEventListener('click', downloadAllQrImages);
   $('qrPrint').addEventListener('click', () => {
     if (!$('qrGrid').children.length) { toast('먼저 QR을 생성하세요.', true); return; }
-    printHtml('소화기 점검 QR 코드', QR_PRINT_CSS, qrGridHtmlForPrint());
+    printQr();
   });
 }
 
@@ -313,6 +313,7 @@ function generateQr(ids) {
     grid.appendChild(card);
 
     const url = `${base}/check.html?id=${encodeURIComponent(ext.id)}`;
+    card.dataset.url = url;
     new QRCode(imgBox, {
       text: url,
       width: 180,
@@ -463,11 +464,79 @@ async function downloadAllQrImages() {
   toast(`${count}개의 QR 이미지를 ZIP으로 다운로드했습니다.`);
 }
 
-// 인쇄용 QR HTML: 다운로드 버튼은 제외한 카드 내용만 반환
-function qrGridHtmlForPrint() {
-  const clone = $('qrGrid').cloneNode(true);
-  clone.querySelectorAll('.qr-dl-btn').forEach((b) => b.remove());
-  return clone.innerHTML;
+// 인쇄용 QR HTML: 다운로드 버튼 없이 카드 한 장씩 고정 비율(640×760) 이미지로 구성
+const QR_PER_PAGE_COLUMNS = [
+  0, 1, 2, 2, 2, 3, 3, 3, 3, 3,
+  4, 4, 4, 4, 4, 4, 4, 5, 5, 5,
+  5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5, 6, 6,
+];
+
+function qrColumnsFor(perPage) {
+  return QR_PER_PAGE_COLUMNS[perPage] || 6;
+}
+
+// 고해상도 QR 이미지(data URL)를 생성합니다.
+function qrDataUrl(text, size) {
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;';
+  document.body.appendChild(holder);
+  let src = '';
+  try {
+    new QRCode(holder, {
+      text,
+      width: size,
+      height: size,
+      colorDark: '#1f2933',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    const img = holder.querySelector('img');
+    const canvas = holder.querySelector('canvas');
+    src = (img && img.src) ? img.src : (canvas ? canvas.toDataURL('image/png') : '');
+  } catch (e) {
+    src = '';
+  }
+  holder.remove();
+  return src;
+}
+
+async function buildQrPrintHtml(perPage) {
+  const cards = Array.from(document.querySelectorAll('#qrGrid .qr-card'));
+  const pages = [];
+
+  for (let i = 0; i < cards.length; i += perPage) {
+    const imgs = [];
+    for (const card of cards.slice(i, i + perPage)) {
+      const screenImg = card.querySelector('.qr-img img');
+      let qrSrc = (screenImg && screenImg.src) || '';
+      if (card.dataset.url) {
+        const hi = qrDataUrl(card.dataset.url, 440);
+        if (hi) qrSrc = hi;
+      }
+      const canvas = await buildQrCardCanvas(
+        { mgmt_no: card.dataset.mgmt, location: card.dataset.loc, type: card.dataset.type },
+        qrSrc,
+      );
+      imgs.push(`<div class="qr-card"><img src="${canvas.toDataURL('image/png')}" alt="QR" /></div>`);
+    }
+    pages.push(`<div class="qr-page"><div class="qr-grid">${imgs.join('')}</div></div>`);
+  }
+
+  return pages.join('');
+}
+
+async function printQr() {
+  const raw = parseInt($('qrPerPage').value, 10);
+  const perPage = Math.min(32, Math.max(1, Number.isFinite(raw) ? raw : 8));
+  $('qrPerPage').value = perPage;
+  try {
+    const bodyHtml = await buildQrPrintHtml(perPage);
+    printHtml('소화기 점검 QR 코드', qrPrintCss(qrColumnsFor(perPage)), bodyHtml);
+  } catch (e) {
+    toast('인쇄용 QR 이미지 생성에 실패했습니다.', true);
+    console.error(e);
+  }
 }
 
 // ============================================================================
@@ -660,15 +729,17 @@ const PRINT_BASE_CSS = `
   body { font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#1f2933; margin:0; padding:24px; }
 `;
 
-const QR_PRINT_CSS = PRINT_BASE_CSS + `
-  .qr-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
-  .qr-card { border:1px solid #b9c0ca; border-radius:8px; padding:10px; text-align:center; page-break-inside:avoid; break-inside:avoid; }
-  .qr-img img, .qr-img canvas { max-width:100%; }
-  .qr-info .qr-no { font-size:16px; font-weight:700; color:#c62828; }
-  .qr-info .qr-loc { font-size:12px; margin-top:2px; }
-  .qr-info .qr-type { font-size:11px; color:#7a8290; }
-  .qr-dl-btn { display:none !important; }
-`;
+function qrPrintCss(cols) {
+  return PRINT_BASE_CSS + `
+    @page { size: A4 portrait; margin: 12mm; }
+    body { padding: 0; }
+    .qr-page { page-break-after: always; break-after: page; }
+    .qr-page:last-child { page-break-after: auto; break-after: auto; }
+    .qr-grid { display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 4mm; width: 180mm; margin: 0 auto; }
+    .qr-card { display: block; }
+    .qr-card img { display: block; width: 100%; height: auto; }
+  `;
+}
 
 const MONTHLY_PRINT_CSS = PRINT_BASE_CSS + `
   h1 { font-size:20px; margin:0 0 6px; }
@@ -692,6 +763,21 @@ function printHtml(title, css, bodyHtml) {
     '<title>' + title + '</title><style>' + css + '</style></head><body>' +
     bodyHtml + '</body></html>';
 
+  const triggerPrint = (win) => {
+    try {
+      const imgs = Array.from(win.document.images || []);
+      if (imgs.length && typeof imgs[0].decode === 'function') {
+        Promise.all(imgs.map((img) => img.decode().catch(() => {}))).then(() => {
+          win.focus();
+          try { win.print(); } catch (e) { /* 무시 */ }
+        });
+        return;
+      }
+    } catch (e) { /* 아래에서 기본 타이머로 진행 */ }
+    win.focus();
+    setTimeout(() => { try { win.print(); } catch (e) { /* 무시 */ } }, 350);
+  };
+
   let w = null;
   try { w = window.open('', '_blank'); } catch (e) { w = null; }
 
@@ -699,8 +785,7 @@ function printHtml(title, css, bodyHtml) {
     w.document.open();
     w.document.write(html);
     w.document.close();
-    w.focus();
-    setTimeout(() => { try { w.print(); } catch (e) { /* 무시 */ } }, 350);
+    triggerPrint(w);
     return;
   }
 
@@ -716,8 +801,7 @@ function printHtml(title, css, bodyHtml) {
     doc.open();
     doc.write(html);
     doc.close();
-    ifr.contentWindow.focus();
-    setTimeout(() => { try { ifr.contentWindow.print(); } catch (e) { /* 무시 */ } }, 350);
+    triggerPrint(ifr.contentWindow);
   } catch (e) {
     toast('인쇄 창을 열 수 없습니다. 팝업 차단을 해제하거나 Ctrl+P를 사용하세요.', true);
   }
